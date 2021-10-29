@@ -125,7 +125,7 @@ class App
                 foreach ($arr as $student) {
                     $xml .= '<player>';
                     foreach ($student as $tag => $data) {
-                        $xml .= '<' . $tag . '>' . htmlspecialchars($data) . '</' . $tag . '>';
+                        $xml .= '<_' . $tag . '>' . htmlspecialchars($data) . '</_' . $tag . '>';
                     }
                     $xml .= '</player>';
                 }
