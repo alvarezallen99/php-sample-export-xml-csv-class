@@ -120,16 +120,16 @@ class App
             case "xml":
                 header('Content-type: application/xml');
                 $xml = '<?xml version="1.0" encoding="UTF-8"?>';
-                $xml .= '<school>';
-                $students = $data;
-                foreach ($students as $student) {
-                    $xml .= '<students>';
+                $xml .= '<data>';
+                $arr = $data;
+                foreach ($arr as $student) {
+                    $xml .= '<player>';
                     foreach ($student as $tag => $data) {
                         $xml .= '<' . $tag . '>' . htmlspecialchars($data) . '</' . $tag . '>';
                     }
-                    $xml .= '</students>';
+                    $xml .= '</player>';
                 }
-                $xml .= '</school>';
+                $xml .= '</data>';
                 echo $xml;
                 // try {
                 //     $array = [
