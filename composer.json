@@ -1,0 +1,11 @@
+{
+    "require": {
+        "openlss/lib-array2xml": "^1.0",
+        "tightenco/collect": "^6.0",
+        "monolog/monolog": "^2.3",
+        "php-console/php-console": "^3.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^7"
+    }
+}
