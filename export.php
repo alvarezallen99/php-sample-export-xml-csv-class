@@ -8,36 +8,56 @@ error_reporting(0);
 require __DIR__ . '/vendor/autoload.php';
 
 $app = new App();
+$app->sanitizeXSS();
 $app->init_mysql("localhost", "nba2019", "password", "nba2019");
 
+
+
 if (isset($_GET['type'])) {
+
     switch ($_GET['type']) {
+
         case "playerstats":
 
-            if (isset($_GET['team'])) {
+            if (isset($_GET['team']) && !empty($_GET['team'])) {
                 $result = $app->query("SELECT * FROM player_totals
                     INNER JOIN `roster` ON `roster`.`id`=`player_totals`.`player_id`
                     INNER JOIN `team` ON `roster`.`team_code`=`team`.`code`
                     WHERE `team`.`code`='" . $_GET['team'] . "'");
-                $app->encoding = "json";
+                
+                $app->no_data($result);
+                $app->encoding = "csv";
+                if (isset($_GET['format'])) {
+                    if (in_array($_GET['format'], array('json', 'xml', 'csv'))) {
+                        $app->encoding = $_GET['format'];
+                    }
+                }
                 return $app->encode($result);
             }
-            if (isset($_GET['position'])) {
+            if (isset($_GET['position']) && !empty($_GET['position'])) {
                 $result = $app->query("SELECT * FROM player_totals
                     INNER JOIN `roster` ON `roster`.`id`=`player_totals`.`player_id`
                     WHERE `roster`.`pos`='" . $_GET['position'] . "'");
-                $app->encoding = "json";
+                
+                $app->no_data($result);
+                $app->encoding = "csv";
+                if (isset($_GET['format'])) {
+                    if (in_array($_GET['format'], array('json', 'xml', 'csv'))) {
+                        $app->encoding = $_GET['format'];
+                    }
+                }
                 return $app->encode($result);
             }
 
-            if (isset($_GET['player'])) {
+            if (isset($_GET['player']) && !empty($_GET['player'])) {
                 $result = $app->query("SELECT * FROM player_totals
                     INNER JOIN `roster` ON `roster`.`id`=`player_totals`.`player_id`
                     WHERE `roster`.`name`='" . $_GET['player'] . "'");
 
-                $app->encoding = "json";
+                $app->no_data($result);
+                $app->encoding = "csv";
                 if (isset($_GET['format'])) {
-                    if (in_array($_GET['format'], array('json', 'xml'))) {
+                    if (in_array($_GET['format'], array('json', 'xml', 'csv'))) {
                         $app->encoding = $_GET['format'];
                     }
                 }
@@ -48,27 +68,29 @@ if (isset($_GET['type'])) {
 
         case "players":
 
-            if (isset($_GET['player'])) {
+            if (isset($_GET['player']) && !empty($_GET['player'])) {
                 $result = $app->query("SELECT * FROM `roster`
                     WHERE `roster`.`name`='" . $_GET['player'] . "'");
 
-                $app->encoding = "json";
+                $app->no_data($result);
+                $app->encoding = "csv";
                 if (isset($_GET['format'])) {
-                    if (in_array($_GET['format'], array('json', 'xml'))) {
+                    if (in_array($_GET['format'], array('json', 'xml', 'csv'))) {
                         $app->encoding = $_GET['format'];
                     }
                 }
                 return $app->encode($result);
             }
 
-            if (isset($_GET['team'])) {
+            if (isset($_GET['team']) && !empty($_GET['team'])) {
                 $result = $app->query("SELECT * FROM `roster`
                         INNER JOIN `team` ON `team`.`code`=`roster`.`team_code`
                         WHERE `team`.`code`='" . $_GET['team'] . "'");
 
-                $app->encoding = "json";
+                $app->no_data($result);
+                $app->encoding = "csv";
                 if (isset($_GET['format'])) {
-                    if (in_array($_GET['format'], array('json', 'xml'))) {
+                    if (in_array($_GET['format'], array('json', 'xml', 'csv'))) {
                         $app->encoding = $_GET['format'];
                     }
                 }
@@ -78,6 +100,7 @@ if (isset($_GET['type'])) {
     }
 }
 
+header("HTTP/1.0 404 Not Found");
 class App
 {
     public $mysqli;
@@ -112,7 +135,7 @@ class App
     public function encode($data)
     {
         switch ($this->encoding) {
-            default:
+            
             case "json":
                 header('Content-Type: application/json');
                 echo json_encode($data, true);
@@ -131,20 +154,37 @@ class App
                 }
                 $xml .= '</data>';
                 echo $xml;
-                // try {
-                //     $array = [
-                //         'title' => 'XML Data',
-                //         'body' => [
-                //             '@xml' => $xml,
-                //         ],
-                //     ];
-                //     $xml = Array2XML::createXML('player', $array);
-                //     echo $xml->saveXML();
-                // } catch (Exception $e) {
-                //     throw new Exception('Could not encode XML: ' . print_r($data));
-                // }
                 break;
+
+            case "csv":
+                $generated_filename = mt_rand(10000000000000, 99999999999999) . '.csv';
+                header('Content-Type: text/csv; charset=utf-8');
+                header('Content-Disposition: attachment; filename='.$generated_filename);
+                $columns = array_change_key_case($data[0], CASE_UPPER);
+                $output = fopen("php://output", "w");
+                fputcsv($output, array_keys($columns));
+                foreach($data as $rows) {
+                    fputcsv($output, $rows);
+                }
+                fclose($output);
+                break;
+                default:
+                    echo "Unsupported Format";
         }
         return $data;
+    }
+
+    public function sanitizeXSS() {
+        $_GET   = filter_input_array(INPUT_GET, FILTER_SANITIZE_STRING);
+        $_POST  = filter_input_array(INPUT_POST, FILTER_SANITIZE_STRING);
+        $_REQUEST = (array)$_POST + (array)$_GET + (array)$_REQUEST;
+    }
+
+    public function no_data($array) {
+        if (empty($array)) {
+            header("HTTP/1.0 404 Not Found");
+            echo "No results found";
+            die();
+        } 
     }
 }
